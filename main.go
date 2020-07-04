@@ -6,25 +6,35 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 	"sync"
 )
 
 func main() {
 	concurrency := 20
-	flag.IntVar(&concurrency, "c", 20, "Set the concurrency level")
-	flag.Parse()
 	jobs := make(chan string)
 	var wg sync.WaitGroup
+	var domainMode bool
+
+	flag.IntVar(&concurrency, "c", 20, "Set the concurrency level")
+	flag.BoolVar(&domainMode, "d", false, "Prints domain instead of IP address")
+	flag.Parse()
+
 	for i := 0; i < concurrency; i++ {
 		wg.Add(1)
 		go func() {
 			for host := range jobs {
-				addr, err := net.LookupIP(host)
+				addr, err := net.LookupIP(strings.TrimSpace(host))
 				if err != nil {
 					continue
 				}
+
 				if !isCloudflare(addr[0]) {
-					fmt.Println(addr[0])
+					if domainMode {
+						fmt.Println(host)
+					} else {
+						fmt.Println(addr[0])
+					}
 				}
 			}
 			wg.Done()
