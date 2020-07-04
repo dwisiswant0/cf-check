@@ -11,6 +11,16 @@ Check an IP is Owned by Cloudflare.
 ▶ echo "uber.com" | cf-check
 ```
 
+### Flags
+
+```
+  -c int
+        Set the concurrency level (default 20)
+  -d    Prints domain instead of IP address
+```
+
+## Workaround
+
 The goal is that you don't need to do a port scan if it's proven that the IP is owned by Cloudflare.
 
 ```
