@@ -5,23 +5,29 @@ import (
 	"flag"
 	"fmt"
 	"net"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
 )
 
 func main() {
-	concurrency := 20
-	jobs := make(chan string)
 	var wg sync.WaitGroup
-	var domainMode bool
+	var domainMode, showCloudflare bool
+	var sc *bufio.Scanner
 
-	flag.IntVar(&concurrency, "c", 20, "Set the concurrency level")
-	flag.BoolVar(&domainMode, "d", false, "Prints domain instead of IP address")
+	concurrency := 20
+
+	flag.IntVar(&concurrency, "c", concurrency, "Set the concurrency level")
+	flag.BoolVar(&domainMode, "d", false, "Print domains instead of IP addresses")
+	flag.BoolVar(&showCloudflare, "cf", false, "Show CloudFlare only")
 	flag.Parse()
+
+	jobs := make(chan string)
 
 	for i := 0; i < concurrency; i++ {
 		wg.Add(1)
+
 		go func() {
 			for host := range jobs {
 				addr, err := net.LookupIP(strings.TrimSpace(host))
@@ -29,30 +35,53 @@ func main() {
 					continue
 				}
 
-				if !isCloudflare(addr[0]) {
-					if domainMode {
-						fmt.Println(host)
-					} else {
-						fmt.Println(addr[0])
-					}
+				ip := addr[0]
+				cf := isCloudflare(ip)
+
+				if !cf && !showCloudflare {
+					show(host, ip, domainMode)
+				} else if cf && showCloudflare {
+					show(host, ip, domainMode)
 				}
 			}
-			wg.Done()
+
+			defer wg.Done()
 		}()
 	}
 
-	sc := bufio.NewScanner(os.Stdin)
+	fn := flag.Arg(0)
+
+	if isStdin() {
+		sc = bufio.NewScanner(os.Stdin)
+	} else if fn != "" {
+		r, err := os.Open(fn)
+		if err == nil {
+			sc = bufio.NewScanner(r)
+		}
+	}
+
 	for sc.Scan() {
-		jobs <- sc.Text()
+		i := sc.Text()
+		u, err := url.Parse(i)
+		if err == nil {
+			if u.Host != "" {
+				jobs <- u.Host
+			} else {
+				jobs <- i
+			}
+		}
 	}
 
 	close(jobs)
-
-	if err := sc.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to read input: %s\n", err)
-	}
-
 	wg.Wait()
+}
+
+func show(host string, ip net.IP, mode bool) {
+	if mode {
+		fmt.Println(host)
+	} else {
+		fmt.Println(ip)
+	}
 }
 
 func inc(ip net.IP) {
@@ -79,14 +108,29 @@ func hosts(cidr string) ([]string, error) {
 	switch {
 	case lenIPs < 2:
 		return ips, nil
-
 	default:
 		return ips[1 : len(ips)-1], nil
 	}
 }
 
 func isCloudflare(ip net.IP) bool {
-	cidrs := []string{"173.245.48.0/20", "103.21.244.0/22", "103.22.200.0/22", "103.31.4.0/22", "141.101.64.0/18", "108.162.192.0/18", "190.93.240.0/20", "188.114.96.0/20", "197.234.240.0/22", "198.41.128.0/17", "162.158.0.0/15", "104.16.0.0/12", "172.64.0.0/13", "131.0.72.0/22"}
+	cidrs := []string{
+		"173.245.48.0/20",
+		"103.21.244.0/22",
+		"103.22.200.0/22",
+		"103.31.4.0/22",
+		"141.101.64.0/18",
+		"108.162.192.0/18",
+		"190.93.240.0/20",
+		"188.114.96.0/20",
+		"197.234.240.0/22",
+		"198.41.128.0/17",
+		"162.158.0.0/15",
+		"104.16.0.0/12",
+		"172.64.0.0/13",
+		"131.0.72.0/22",
+	}
+
 	for i := range cidrs {
 		hosts, err := hosts(cidrs[i])
 		if err != nil {
@@ -100,4 +144,17 @@ func isCloudflare(ip net.IP) bool {
 		}
 	}
 	return false
+}
+
+func isStdin() bool {
+	f, e := os.Stdin.Stat()
+	if e != nil {
+		return false
+	}
+
+	if f.Mode()&os.ModeNamedPipe == 0 {
+		return false
+	}
+
+	return true
 }
