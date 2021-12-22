@@ -129,6 +129,7 @@ func isCloudflare(ip net.IP) bool {
 		"104.16.0.0/12",
 		"172.64.0.0/13",
 		"131.0.72.0/22",
+		"104.24.0.0/14",
 	}
 
 	for i := range cidrs {
