@@ -55,9 +55,13 @@ func main() {
 		sc = bufio.NewScanner(os.Stdin)
 	} else if fn != "" {
 		r, err := os.Open(fn)
-		if err == nil {
-			sc = bufio.NewScanner(r)
+		if err != nil {
+			panic(err)
 		}
+
+		sc = bufio.NewScanner(r)
+	} else {
+		return
 	}
 
 	for sc.Scan() {
