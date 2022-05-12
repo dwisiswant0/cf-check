@@ -1,0 +1,37 @@
+name: Update DB
+on:
+  schedule:
+    - cron: "0 0 * * 0" # at 00:00 on Sunday
+  workflow_dispatch:
+
+jobs: 
+  update: 
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Install dependencies"
+        run: sudo apt install curl jq -y
+
+      - name: "Check out code"
+        uses: actions/checkout@v2
+        with: 
+          fetch-depth: 0
+
+      - name: "Update DB..."
+        id: update
+        run: |
+          ./.github/scripts/update.sh ${{ secrets.LOCAL_DB }}
+          echo "::set-output name=changes::$(git status -s | wc -l)"
+          echo "::set-output name=date::$(date)"
+
+      - name: Create Pull Request
+        if: steps.update.outputs.changes > 0
+        uses: peter-evans/create-pull-request@v3
+        with:
+          body: "Automated update CloudFlare IPv4 prefixes data."
+          branch-suffix: "short-commit-hash"
+          branch: "update/db"
+          commit-message: "db: Update DB ${{ steps.check.date }}"
+          committer: "Dwi Siswanto <me@dw1.io>"
+          delete-branch: true
+          reviewers: "dwisiswant0"
+          title: "db: Update DB ${{ steps.check.date }}"

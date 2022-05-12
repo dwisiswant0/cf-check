@@ -1,6 +1,6 @@
 builds:
     - binary: cf-check
-      main: main.go
+      main: .
       goos:
         - linux
         - windows
