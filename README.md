@@ -7,26 +7,26 @@ Check an Host is Owned by CloudFlare.
 2. If you have [Go1.18+](https://go.dev/dl/) compiler installed & configured:
 
 ```console
-$ go install github.com/dwisiswant0/cf-check@latest
+go install github.com/dwisiswant0/cf-check@latest
 ```
 
 ## Usage
 
 ```console
-$ echo "uber.com" | cf-check
+echo "uber.com" | cf-check
 34.98.127.226
 ```
 
 or
 
 ```console
-$ cf-check -d <FILE>
+cf-check -d <FILE>
 ```
 
 ### Flags
 
 ```console
-$ cf-check -h
+cf-check -h
 Usage of cf-check:
   -c int
         Set the concurrency level (default: 20)
@@ -40,7 +40,7 @@ Usage of cf-check:
 The goal is that you don't need to do a port scan if it's proven that the IP is owned by Cloudflare.
 
 ```console
-$ subfinder -silent -d uber.com | filter-resolved | cf-check -d | anew | naabu -silent -verify | httpx -silent
+subfinder -silent -d uber.com | filter-resolved | cf-check -d | anew | naabu -silent -verify | httpx -silent
 ```
 
 ## License
